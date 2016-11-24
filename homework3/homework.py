@@ -1,5 +1,6 @@
 import ply.lex as lex
 import ply.yacc as yacc
+import copy
 
 
 def read_input():
@@ -119,10 +120,6 @@ def move_not_inwards(s):
 
 
 def distribute_and_over_or(s):
-    """Given a sentence s consisting of conjunctions and disjunctions
-        of literals, return an equivalent sentence in CNF.
-        >>> distribute_and_over_or((A & B) | C)
-        ((A | C) & (B | C))"""
     #print "distribute_and_over_or: " + str(s)
     if s[0] == '|':
         if isinstance(s[1], list):
@@ -164,11 +161,200 @@ def distribute_and_over_or(s):
         return s
 
 
+def divid_and_in_kb(KB):
+    kb_separate = []
+    changed = False
+    for each_kb in KB:
+        if each_kb[0] == '&':
+            changed = True
+            if isinstance(each_kb[1], list):
+                kb_separate.append(each_kb[1])
+            else:
+                kb_separate.append([each_kb[1]])
+            if isinstance(each_kb[2], list):
+                kb_separate.append(each_kb[2])
+            else:
+                kb_separate.append([each_kb[2]])
+        else:
+            kb_separate.append(each_kb)
+    return kb_separate, changed
+
+
+def pl_resolution(KB, alpha):
+    if len(alpha) == 1:
+        add_clause = to_cnf(['~', alpha[0]])
+    else:
+        add_clause = to_cnf(['~', alpha])
+    new_kb = copy.deepcopy(KB)
+    if not isinstance(new_kb[0],list):
+        new_kb = [new_kb]
+    if isinstance(add_clause, list):
+        new_kb.append(add_clause)
+    else:
+        new_kb.append([add_clause])
+    print "add_clause: " + str(add_clause)
+    print "new_kb: " + str(new_kb)
+    new = []
+    while True:
+        n = len(new_kb)
+        pairs = [(new_kb[i], new_kb[j])
+                 for i in range(n) for j in range(i + 1, n)]
+        print "pairs: " + str(pairs)
+        for (ci, cj) in pairs:
+            print
+            #print "pairs: " + str(pairs)
+            #print "pair print"
+            #print ci
+            #print cj
+            #print
+        #for (ci, cj) in pairs:
+            print "dealing with pair:" + str(ci) + " and " + str(cj)
+            #print "pairs: " + str(pairs)
+            resolvents = pl_resolve(ci, cj)#, pairs)
+           # print "pairs: " + str(pairs)
+            print "resolvents: " + str(resolvents)
+            #print "pairs: " + str(pairs)
+            #print "pairs: " + str(pairs)
+            if [] in resolvents:
+                return True
+            #print "pairs: " + str(pairs)
+            for e in resolvents:
+                #try:
+                print "putting: " + str(e)
+                if len(e) != 0:
+                    if e not in new:
+                        new.append(e)
+            #print "pairs: " + str(pairs)
+
+        already_exist = True
+        print "new: " + str(new)
+       # if len(resolvents) != 0:
+        for each_new in new:
+            if each_new not in new_kb:
+                already_exist = False
+        print "already_exist: " + str(already_exist)
+        if already_exist:
+            print "terminate for already_exist"
+            return False
+        for c in new:
+            if c not in new_kb:
+                new_kb.append(list(c))
+
+
+def pl_resolve(clause_i, clause_j):#, pairs):
+    print "resolving " + str(clause_i) + " and " + str(clause_j)
+    clauses = []
+    disjuncts_i = disjunction(clause_i, [])
+    disjuncts_j = disjunction(clause_j, [])
+    #print "pairs: " + str(pairs)
+    #print "Initial"
+    #print "disjuncts_i " + str(disjuncts_i)
+    #print "disjuncts_j " + str(disjuncts_j)
+    if len(disjuncts_i) == 2 and not isinstance(disjuncts_i[0], list) and disjuncts_i[0] == '~':
+        disjuncts_i = [disjuncts_i]
+    if len(disjuncts_j) == 2 and not isinstance(disjuncts_j[0], list) and disjuncts_j[0] == '~':
+        disjuncts_j = [disjuncts_j]
+    #print "before check on disjuncts: " + str(pairs)
+    for d_i in disjuncts_i:
+        for d_j in disjuncts_j:
+            #print "before verify disjuncts " + str(d_i) + " and " + str(d_j) + ": " + str(pairs)
+            if d_i == to_cnf(['~', d_j]) or to_cnf(['~', d_i]) == d_j:
+                #print "YES"
+                #print "before removing on disjuncts " + str(d_i) + " and " + str(d_j) + ": " + str(pairs)
+                dis_i = copy.deepcopy(disjuncts_i)
+                dis_j = copy.deepcopy(disjuncts_j)
+                #disjuncts_i.remove(d_i)
+                #disjuncts_j.remove(d_j)
+                dis_i.remove(d_i)
+                dis_j.remove(d_j)
+               # print "after removing on disjuncts " + str(d_i) + " and " + str(d_j) + ": " + str(pairs)
+               # print "disjuncts_i: " + str(disjuncts_i)
+                #print "disjuncts_j: " + str(disjuncts_j)
+                #print "after add disjuncts_i: " + str(pairs)
+                new_clause = []
+                i = 0
+                #print "before add disjuncts_i: " + str(pairs)
+                for horn in dis_i:#disjuncts_i:
+                    #print "horn: " + str(horn)
+
+                    if i == 0:
+                        if len(horn) == 1:
+                            new_clause.append(horn[0])
+                            #new_clause = horn
+                        else:
+                            new_clause.append(horn)
+                    else:
+                        if len(horn) == 1:
+                            if len(new_clause) == 1:
+                                new_clause = ['|', new_clause[0], horn[0]]
+                            else:
+                                new_clause = ['|', new_clause, horn[0]]
+                        else:
+                            if len(new_clause) == 1:
+                                new_clause = ['|', new_clause[0], horn]
+                            else:
+                                new_clause = ['|', new_clause, horn]
+
+                    i += 1
+                #print "after add disjuncts_i: " + str(pairs)
+                for horn in dis_j:#disjuncts_j:
+                    if horn not in dis_i:#disjuncts_i:
+                        #print "horn: " + str(horn)
+                        if i == 0:
+                            if len(horn) == 1:
+                                new_clause.append(horn[0])
+                            else:
+                                new_clause.append(horn)
+                        else:
+                            if len(horn) == 1:
+                                if len(new_clause) == 1:
+                                    new_clause = ['|', new_clause[0], horn[0]]
+                                else:
+                                    new_clause = ['|', new_clause, horn[0]]
+                            else:
+                                if len(new_clause) == 1:
+                                    new_clause = ['|', new_clause[0], horn]
+                                else:
+                                    new_clause = ['|', new_clause, horn]
+                    i += 1
+                if len(new_clause) == 1:
+                    if isinstance(new_clause[0], list):
+                        print "new_clause: " + str(new_clause[0])
+                        clauses.append(new_clause[0])
+                    else:
+                        print "new_clause: " + str(new_clause)
+                        clauses.append(new_clause)
+                else:
+                    print "new_clause: " + str(new_clause)
+                    clauses.append(new_clause)
+    #print "before return pairs: " + str(pairs)
+    return clauses
+
+
+def disjunction(c, disjunct):
+    #print "disjucting " + str(c)
+    if c[0] == '|':
+        if isinstance(c[1], list) and c[1][0] == '|':
+                disjunction(c[1], disjunct)
+        else:
+            disjunct.append(disjunction(c[1], disjunct))
+        if isinstance(c[2], list) and c[2][0] == '|':
+                disjunction(c[2], disjunct)
+        else:
+            disjunct.append(disjunction(c[2], disjunct))
+    else:
+        return c
+
+    return disjunct
+
+
+
 if __name__ == "__main__":
     input_file = read_input()
     processed_input = sperate_input(input_file)
     need_prove = processed_input[0]
     kb_original = processed_input[1]
+    need_prove_pool = []
     kb = []
     tokens = (
         'ID',
@@ -190,6 +376,8 @@ if __name__ == "__main__":
     # Build the lexer
     lexer = lex.lex()
     yacc.yacc()
+    for each_need_prove in need_prove:
+        need_prove_pool.append(yacc.parse(each_need_prove))
     for each_line in kb_original:
         kb.append(yacc.parse(each_line))
     for each in kb:
@@ -197,10 +385,27 @@ if __name__ == "__main__":
             kb[kb.index(each)] = [each]
     kb_cnf = []
     for each_kb in kb:
-        print "number " + str(kb.index(each_kb))
-        print "start processing: " + str(each_kb)
+        #print "number " + str(kb.index(each_kb))
+        #print "start processing: " + str(each_kb)
         each_kb = to_cnf(each_kb)
-        print "processed result:" + str(each_kb)
-        print
+        #print "processed result:" + str(each_kb)
+        #print
         kb_cnf.append(each_kb)
-    #print kb
+    kb_and_separate_result = divid_and_in_kb(kb_cnf)
+    if kb_and_separate_result[1]:
+        kb_and_separate_result = divid_and_in_kb(kb_cnf)
+    kb_and_separate = kb_and_separate_result[0]
+    print "kb:"
+    for each in kb_and_separate:
+        print each
+    out = open('output.txt', 'w')
+    for each_need_prove in need_prove_pool:
+        print "result for # " + str(need_prove_pool.index(each_need_prove))
+        #out.write(str(pl_resolution(kb_and_separate, each_need_prove)))
+        out.write("\n")
+    out.close()
+
+    #print pl_resolve(['H(x)'], ['~', 'H(x)'])
+
+    #print pl_resolve(['|', ['~', 'A(x)'], 'H(x)'], ['|', ['|', 'G(x)', ['~', 'B(x)']], ['~', 'H(x)']])
+    print pl_resolution([['|', ['~', 'A(x)'], 'H(x)'], ['A(x)']], ['H(x)'])
