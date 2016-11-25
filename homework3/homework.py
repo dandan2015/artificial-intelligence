@@ -491,7 +491,7 @@ if __name__ == "__main__":
     out = open('output.txt', 'w')
     for each_need_prove in need_prove_pool:
         print "result for # " + str(need_prove_pool.index(each_need_prove))
-        out.write(str(pl_resolution(kb_and_separate, each_need_prove)))
+        out.write(str(pl_resolution(kb_and_separate, each_need_prove)).upper())
         out.write("\n")
     out.close()
 
