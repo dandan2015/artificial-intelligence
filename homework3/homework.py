@@ -192,49 +192,35 @@ def pl_resolution(KB, alpha):
         new_kb.append(add_clause)
     else:
         new_kb.append([add_clause])
-    print "add_clause: " + str(add_clause)
-    print "new_kb: " + str(new_kb)
+    #print "add_clause: " + str(add_clause)
+    #print "new_kb: " + str(new_kb)
     new = []
     while True:
         n = len(new_kb)
         pairs = [(new_kb[i], new_kb[j])
                  for i in range(n) for j in range(i + 1, n)]
-        print "pairs: " + str(pairs)
+        #print "pairs: " + str(pairs)
         for (ci, cj) in pairs:
-            print
-            #print "pairs: " + str(pairs)
-            #print "pair print"
-            #print ci
-            #print cj
             #print
-        #for (ci, cj) in pairs:
-            print "dealing with pair:" + str(ci) + " and " + str(cj)
-            #print "pairs: " + str(pairs)
-            resolvents = pl_resolve(ci, cj)#, pairs)
-           # print "pairs: " + str(pairs)
-            print "resolvents: " + str(resolvents)
-            #print "pairs: " + str(pairs)
-            #print "pairs: " + str(pairs)
+            #print "dealing with pair:" + str(ci) + " and " + str(cj)
+            resolvents = pl_resolve(ci, cj)
+            #print "resolvents: " + str(resolvents)
             if [] in resolvents:
                 return True
-            #print "pairs: " + str(pairs)
             for e in resolvents:
-                #try:
-                print "putting: " + str(e)
+                #print "putting: " + str(e)
                 if len(e) != 0:
                     if e not in new:
                         new.append(e)
-            #print "pairs: " + str(pairs)
 
         already_exist = True
-        print "new: " + str(new)
-       # if len(resolvents) != 0:
+        #print "new: " + str(new)
         for each_new in new:
             if each_new not in new_kb:
                 already_exist = False
-        print "already_exist: " + str(already_exist)
+        #print "already_exist: " + str(already_exist)
         if already_exist:
-            print "terminate for already_exist"
+            #print "terminate for already_exist"
             return False
         for c in new:
             if c not in new_kb:
@@ -242,11 +228,10 @@ def pl_resolution(KB, alpha):
 
 
 def pl_resolve(clause_i, clause_j):#, pairs):
-    print "resolving " + str(clause_i) + " and " + str(clause_j)
+    #print "resolving " + str(clause_i) + " and " + str(clause_j)
     clauses = []
     disjuncts_i = disjunction(clause_i, [])
     disjuncts_j = disjunction(clause_j, [])
-    #print "pairs: " + str(pairs)
     #print "Initial"
     #print "disjuncts_i " + str(disjuncts_i)
     #print "disjuncts_j " + str(disjuncts_j)
@@ -254,33 +239,90 @@ def pl_resolve(clause_i, clause_j):#, pairs):
         disjuncts_i = [disjuncts_i]
     if len(disjuncts_j) == 2 and not isinstance(disjuncts_j[0], list) and disjuncts_j[0] == '~':
         disjuncts_j = [disjuncts_j]
-    #print "before check on disjuncts: " + str(pairs)
     for d_i in disjuncts_i:
         for d_j in disjuncts_j:
-            #print "before verify disjuncts " + str(d_i) + " and " + str(d_j) + ": " + str(pairs)
-            if d_i == to_cnf(['~', d_j]) or to_cnf(['~', d_i]) == d_j:
+            first = d_i
+            second = d_j
+            first_not = False
+            second_not = False
+            unify_dic = {}
+            if isinstance(d_i, list) and d_i[0] == '~':
+                if isinstance(d_i[1], str):
+                    first_not = True
+                    first =  d_i[1]
+            if isinstance(d_j, list) and d_j[0] == '~':
+                if isinstance(d_j[1], str):
+                    second_not = True
+                    second = d_j[1]
+            if isinstance(first, str) and isinstance(second, str):
+                #print "first: " + first
+                #print "second: " + second
+                unify_result = unify_two_sentence(first, second, {})
+                if first_not:
+                    first = ['~', unify_result[0]]
+                else:
+                    first = unify_result[0]
+                if second_not:
+                    second = ['~', unify_result[1]]
+                else:
+                    second = unify_result[1]
+                unify_dic = unify_result[2]
+
+            if first == to_cnf(['~', second]) or to_cnf(['~', first]) == second:
+            #if d_i == to_cnf(['~', d_j]) or to_cnf(['~', d_i]) == d_j:
                 #print "YES"
-                #print "before removing on disjuncts " + str(d_i) + " and " + str(d_j) + ": " + str(pairs)
                 dis_i = copy.deepcopy(disjuncts_i)
                 dis_j = copy.deepcopy(disjuncts_j)
-                #disjuncts_i.remove(d_i)
-                #disjuncts_j.remove(d_j)
                 dis_i.remove(d_i)
                 dis_j.remove(d_j)
-               # print "after removing on disjuncts " + str(d_i) + " and " + str(d_j) + ": " + str(pairs)
-               # print "disjuncts_i: " + str(disjuncts_i)
-                #print "disjuncts_j: " + str(disjuncts_j)
-                #print "after add disjuncts_i: " + str(pairs)
+                for each_i in dis_i:
+                    ea = each_i
+                    ea_not = False
+                    if isinstance(ea, list) and ea[0] == '~':
+                        if isinstance(ea[1], str):
+                            ea_not = True
+                            ea = ea[1]
+                    if isinstance(ea, str):
+                        ea_func_paras = access_func_paras(ea)
+                        ea_paras = ea_func_paras[1]
+                        for ea_para in ea_paras:
+                            if ea_para[0].islower() and ea_para in unify_dic.keys():
+                                ea_paras[ea_paras.index(ea_para)] = unify_dic[ea_para]
+                        #ea_func_paras[1] = ea_paras
+                        ea = resemble_into_sentence([ea_func_paras[0], ea_paras])
+                    if ea_not:
+                        dis_i[dis_i.index(each_i)] = ['~', ea]
+                    else:
+                        dis_i[dis_i.index(each_i)] = ea
+
+                for each_j in dis_j:
+                    ea = each_j
+                    ea_not = False
+                    if isinstance(ea, list) and ea[0] == '~':
+                        if isinstance(ea[1], str):
+                            ea_not = True
+                            ea = ea[1]
+                    if isinstance(ea, str):
+                        ea_func_paras = access_func_paras(ea)
+                        ea_paras = ea_func_paras[1]
+                        for ea_para in ea_paras:
+                            if ea_para[0].islower() and ea_para in unify_dic.keys():
+                                ea_paras[ea_paras.index(ea_para)] = unify_dic[ea_para]
+                        #ea_func_paras[1] = ea_paras
+                        ea = resemble_into_sentence([ea_func_paras[0], ea_paras])
+                    if ea_not:
+                        dis_j[dis_j.index(each_j)] = ['~', ea]
+                    else:
+                        dis_j[dis_j.index(each_j)] = ea
+
+
+
                 new_clause = []
                 i = 0
-                #print "before add disjuncts_i: " + str(pairs)
-                for horn in dis_i:#disjuncts_i:
-                    #print "horn: " + str(horn)
-
+                for horn in dis_i:
                     if i == 0:
                         if len(horn) == 1:
                             new_clause.append(horn[0])
-                            #new_clause = horn
                         else:
                             new_clause.append(horn)
                     else:
@@ -296,10 +338,8 @@ def pl_resolve(clause_i, clause_j):#, pairs):
                                 new_clause = ['|', new_clause, horn]
 
                     i += 1
-                #print "after add disjuncts_i: " + str(pairs)
-                for horn in dis_j:#disjuncts_j:
-                    if horn not in dis_i:#disjuncts_i:
-                        #print "horn: " + str(horn)
+                for horn in dis_j:
+                    if horn not in dis_i:
                         if i == 0:
                             if len(horn) == 1:
                                 new_clause.append(horn[0])
@@ -319,15 +359,14 @@ def pl_resolve(clause_i, clause_j):#, pairs):
                     i += 1
                 if len(new_clause) == 1:
                     if isinstance(new_clause[0], list):
-                        print "new_clause: " + str(new_clause[0])
+                        #print "new_clause: " + str(new_clause[0])
                         clauses.append(new_clause[0])
                     else:
-                        print "new_clause: " + str(new_clause)
+                        #print "new_clause: " + str(new_clause)
                         clauses.append(new_clause)
                 else:
-                    print "new_clause: " + str(new_clause)
+                    #print "new_clause: " + str(new_clause)
                     clauses.append(new_clause)
-    #print "before return pairs: " + str(pairs)
     return clauses
 
 
@@ -347,6 +386,57 @@ def disjunction(c, disjunct):
 
     return disjunct
 
+
+def unify_two_sentence(s_1, s_2, dic):
+    sen_1 = access_func_paras(s_1)
+    sen_2 = access_func_paras(s_2)
+    if sen_1[0] == sen_2[0] and len(sen_1[1]) == len(sen_2[1]):
+        #print "func same"
+        for i in range(0, len(sen_1[1])):
+            if sen_1[1][i] != sen_2[1][i]:
+                #print "index " + str(i) + " need unify: " + str(sen_1[1][i]) + " and " + sen_2[1][i]
+                if sen_1[1][i][0].islower() and sen_2[1][i][0].isupper():
+                    #print "case 1"
+                    dic[sen_1[1][i]] = sen_2[1][i]
+                elif sen_1[1][i][0].isupper() and sen_2[1][i][0].islower():
+                    #print "case 2"
+                    dic[sen_2[1][i]] = sen_1[1][i]
+                elif sen_1[1][i][0].islower() and sen_2[1][i][0].islower():
+                    continue
+                else:
+                    return s_1, s_2, dic
+            elif sen_1[1][i] == sen_2[1][i] and sen_1[1][i][0].islower() and sen_2[1][i][0].islower():
+                continue
+            else:
+                return s_1, s_2, dic
+        for i in range(0, len(sen_1[1])):
+            if sen_1[1][i][0].islower() and sen_1[1][i] in dic.keys():
+                sen_1[1][i] = dic[sen_1[1][i]]
+            if sen_2[1][i][0].islower() and sen_2[1][i] in dic.keys():
+                sen_2[1][i] = dic[sen_2[1][i]]
+        #print "sen_1: " + str(sen_1)
+        #print "sen_2: " + str(sen_2)
+        s_1 = resemble_into_sentence(sen_1)
+        s_2 = resemble_into_sentence(sen_2)
+        return s_1, s_2, dic
+        #return unify_two_sentence(s_1, s_2, dic)
+
+    else:
+        return s_1, s_2, dic
+
+
+def access_func_paras(s):
+    s = s[:-1]
+    func_name = s.split('(')[0]
+    paras = s.split('(')[1].split(',')
+    return func_name, paras
+
+
+def resemble_into_sentence(sen):
+    func = sen[0]
+    paras = sen[1]
+    resemble = func + '(' + ','.join(paras) + ')'
+    return resemble
 
 
 if __name__ == "__main__":
@@ -395,17 +485,21 @@ if __name__ == "__main__":
     if kb_and_separate_result[1]:
         kb_and_separate_result = divid_and_in_kb(kb_cnf)
     kb_and_separate = kb_and_separate_result[0]
-    print "kb:"
-    for each in kb_and_separate:
-        print each
+    #print "kb:"
+    #for each in kb_and_separate:
+    #    print each
     out = open('output.txt', 'w')
     for each_need_prove in need_prove_pool:
         print "result for # " + str(need_prove_pool.index(each_need_prove))
-        #out.write(str(pl_resolution(kb_and_separate, each_need_prove)))
+        out.write(str(pl_resolution(kb_and_separate, each_need_prove)))
         out.write("\n")
     out.close()
 
     #print pl_resolve(['H(x)'], ['~', 'H(x)'])
 
-    #print pl_resolve(['|', ['~', 'A(x)'], 'H(x)'], ['|', ['|', 'G(x)', ['~', 'B(x)']], ['~', 'H(x)']])
-    print pl_resolution([['|', ['~', 'A(x)'], 'H(x)'], ['A(x)']], ['H(x)'])
+    #print pl_resolution(['|', ['~', 'A(x)'], 'H(Tom)'], ['|', ['|', 'G(x)', ['~', 'B(x)']], ['~', 'H(x)']])
+    #print pl_resolution([['|', ['~', 'A(x)'], 'H(x)'], ['A(x)']], ['H(x)'])
+    #print unify_two_sentence('A(x)', 'A(x)', {})
+    #print unify_two_sentence('A(x,John,t)', 'A(Tom,y,q)', {})
+    #access_func_paras('A(xew, ywqe, zew)')
+    #resemble_into_sentence('Ah',['x','y', 'swd'])
